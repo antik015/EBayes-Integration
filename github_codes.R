@@ -1,5 +1,6 @@
 ### Functions to implement EBayesIntegration ###
-
+library(pracma)
+library(mvtnorm)
 rep.row <- function(x, n){
   matrix(rep(x, each = n), nrow = n)
 }
@@ -92,7 +93,7 @@ opt_linear_shrinkage_unb = function(X, Omega)
   unbiased_risk_estimate2=unbiased_risk_estimate
   unbiased_risk_estimate2[unbiased_risk_estimate<0]=Inf
   h_unb=h_seq[which.min(unbiased_risk_estimate2)]
-  res = stein_shrinker(Y, h = h_unb)
+  res = stein_shrinker(X_star, h = h_unb)
   
   Sigma_hat_inv = res$sigmahat_inv
   theta_star_hat = X_star%*%(diag(p) - Sigma_hat_inv)
@@ -157,3 +158,30 @@ local_linear_shrinkage = function(X, h, K, Omega, nmcmc, burnin)
   
   return(B_samples2)
 }
+
+### Example ###
+N = 100
+p = 20
+ntissues = 40
+rho_X = 0.5
+Sigma_X = (1 - rho_X)*diag(p) + rho_X*matrix(1, p, p)
+X = rmvnorm(N, sigma = Sigma_X)
+r = 10
+beta0 = matrix(rnorm(p*r), p, r)%*%matrix(rnorm(r*ntissues), r, ntissues)
+sigma0 = 1
+Y = matrix(0, N, ntissues)
+beta = matrix(0, p, ntissues)
+sigma_hat = rep(0, ntissues)
+for(j in 1:ntissues)
+{
+  Y[,j] = X%*%beta0[,j] + sigma0*rnorm(N)
+  lm_j = lm(Y[,j]~-1+X)
+  beta[,j] = lm_j$coefficients
+  sigma_hat[j] = summary(lm_j)$sigma
+}
+Omega = mean(sigma_hat)^2*solve(t(X)%*%X)
+Bhat1 = opt_linear_shrinkage_unb(t(beta), Omega)
+Bhat2 = opt_linear_shrinkage(t(beta), default_h(ntissues, p), Omega)
+norm(t(beta0) - t(beta), "F") ## OLS error
+norm(t(beta0) - Bhat1, "F") 
+norm(t(beta0) - Bhat2, "F")
