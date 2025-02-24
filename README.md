@@ -7,8 +7,8 @@ The key idea is to estimate the covariance matrix of $\hat{\beta}^{(t)}$ which i
 ```
 library(mvtnorm)
 library(pracma)
-source("github_codes.R")
 source("unbiased_risk.R")
+source("github_codes.R")
 N = 100
 p = 20
 ntissues = 40
